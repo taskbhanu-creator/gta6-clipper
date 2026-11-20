@@ -31,7 +31,9 @@ READY_DIR = WORK_DIR / "ready"
 
 # Only monitor streamers who explicitly allow clipping & re-uploads with credit.
 WHITELIST_CHANNELS = [
-    {"name": "ExampleStreamer", "channel_id": "UC_REPLACE_WITH_CHANNEL_ID", "handle": "@ExampleStreamer"},
+    {"name": "Unq Gamer", "channel_id": "UCabjixiIIRDY6-dmaQVbPlA", "handle": "@UnqGamer"},
+    {"name": "Techno Gamerz", "channel_id": "UCX8pnu3DYUnx8qy8V_c6oHg", "handle": "@TechnoGamerzOfficial"},
+    {"name": "IShowSpeed", "channel_id": "UCWsDFcIhY2DBi3GB5uykGXA", "handle": "@IShowSpeed"},
 ]
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
