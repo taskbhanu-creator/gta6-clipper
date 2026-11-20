@@ -3,8 +3,8 @@
 Designed for GitHub Actions (cron) or any Linux runner:
   1. Monitor whitelisted YouTube channels for active GTA 6 live streams.
   2. Capture a 3-minute live segment via yt-dlp + ffmpeg and slice the loudest 45s peak.
-  3. Generate word-level timestamps via Groq's free Whisper API (or local faster-whisper)
-     and burn styled .ass captions + title hook into a 9:16 (1080x1920) MP4.
+  3. Generate word-level timestamps via Groq's free Whisper API and burn styled
+     .ass captions + title hook into a 9:16 (1080x1920) MP4.
   4. Upload to YouTube Shorts (via saved refresh token) and Instagram Reels
      (via temporary Cloudflare R2 public URL, then auto-delete).
 """
@@ -38,6 +38,7 @@ WHITELIST_CHANNELS = [
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 YOUTUBE_TOKEN_JSON = os.getenv("YOUTUBE_TOKEN_JSON", "")
+YOUTUBE_COOKIES = os.getenv("YOUTUBE_COOKIES", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 IG_USER_ID = os.getenv("IG_USER_ID", "")
@@ -53,6 +54,15 @@ R2_PUBLIC_BASE_URL = os.getenv("R2_PUBLIC_BASE_URL", "").rstrip("/")
 def ensure_dirs() -> None:
     for d in (CHUNKS_DIR, CLIPS_DIR, READY_DIR):
         d.mkdir(parents=True, exist_ok=True)
+
+
+def _cookies_args() -> list[str]:
+    """Write optional Netscape cookies.txt from YOUTUBE_COOKIES secret for datacenter IPs."""
+    if not YOUTUBE_COOKIES.strip():
+        return []
+    cookie_file = WORK_DIR / "cookies.txt"
+    cookie_file.write_text(YOUTUBE_COOKIES, encoding="utf-8")
+    return ["--cookies", str(cookie_file)]
 
 
 # ---------------------------------------------------------------------------
@@ -99,18 +109,47 @@ def find_live_streams(channels: list[dict]) -> list[dict]:
 # Stage 2: Capture Live Segment & Detect Audio Peak
 # ---------------------------------------------------------------------------
 def record_live_sample(stream_url: str, duration_sec: int = 180) -> Path:
-    """Capture a lossless live segment from yt-dlp piped into ffmpeg."""
+    """Resolve a combined stream URL with yt-dlp and record duration_sec via ffmpeg."""
     ensure_dirs()
     out_path = CHUNKS_DIR / "live_sample.mp4"
-    yt_cmd = ["yt-dlp", "-f", "bestvideo[height<=1080]+bestaudio/best", "-o", "-", stream_url]
-    ff_cmd = ["ffmpeg", "-y", "-i", "pipe:0", "-t", str(duration_sec), "-c", "copy", str(out_path)]
-    print(f"[Stage 2] Capturing {duration_sec}s live sample from {stream_url} ...")
-    yt_proc = subprocess.Popen(yt_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    ff_proc = subprocess.Popen(ff_cmd, stdin=yt_proc.stdout, stderr=subprocess.DEVNULL)
-    try:
-        ff_proc.wait(timeout=duration_sec + 30)
-    finally:
-        yt_proc.terminate()
+    if out_path.exists():
+        out_path.unlink()
+
+    print(f"[Stage 2] Resolving stream URL for {stream_url} ...")
+    yt_cmd = [
+        "yt-dlp",
+        "--no-playlist",
+        "--extractor-args",
+        "youtube:player_client=ios,android,web",
+        "-f",
+        "best[height<=1080][ext=mp4]/best[height<=1080]/best",
+        "-g",
+        *_cookies_args(),
+        stream_url,
+    ]
+    url_res = subprocess.run(yt_cmd, capture_output=True, text=True, check=False)
+    if url_res.returncode != 0 or not url_res.stdout.strip():
+        raise RuntimeError(
+            f"yt-dlp failed to resolve stream URL (exit {url_res.returncode}):\n{url_res.stderr}"
+        )
+
+    direct_url = url_res.stdout.strip().splitlines()[0]
+    print(f"[Stage 2] Capturing {duration_sec}s sample via ffmpeg ...")
+    ff_cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        direct_url,
+        "-t",
+        str(duration_sec),
+        "-c",
+        "copy",
+        str(out_path),
+    ]
+    ff_res = subprocess.run(ff_cmd, capture_output=True, text=True, check=False)
+    if ff_res.returncode != 0 or not out_path.exists() or out_path.stat().st_size == 0:
+        raise RuntimeError(f"ffmpeg capture failed (exit {ff_res.returncode}):\n{ff_res.stderr}")
+
     return out_path
 
 
