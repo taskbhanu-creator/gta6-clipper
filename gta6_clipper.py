@@ -341,7 +341,13 @@ def detect_loudest_window(chunk_path: Path) -> float:
             current_time = float(t_match.group(1))
         db_match = re.search(r"RMS_level=([-0-9.]+)", line)
         if db_match:
-            db = float(db_match.group(1))
+            db_text = db_match.group(1)
+            if db_text == "-" or not db_text:
+                continue
+            try:
+                db = float(db_text)
+            except ValueError:
+                continue
             if db > peak_db:
                 peak_db = db
                 peak_time = current_time

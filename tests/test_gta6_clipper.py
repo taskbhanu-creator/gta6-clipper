@@ -124,6 +124,22 @@ class RunAutoTests(unittest.TestCase):
         record_video_sample.assert_called_once()
 
 
+class LoudestWindowTests(unittest.TestCase):
+    def test_ignores_unavailable_rms_level(self):
+        ffmpeg_output = (
+            "frame:0 pts:0 pts_time:0.0\n"
+            "RMS_level=-\n"
+            "frame:2 pts:43 pts_time:43.0\n"
+            "RMS_level=-18.5\n"
+        )
+        completed = subprocess.CompletedProcess([], 0, stdout=ffmpeg_output, stderr="")
+
+        with patch.object(clipper.subprocess, "run", return_value=completed):
+            peak_start = clipper.detect_loudest_window(Path("sample.mp4"))
+
+        self.assertEqual(peak_start, 23.0)
+
+
 class RecordVideoSampleTests(unittest.TestCase):
     def test_uses_default_player_clients_and_requested_sample_offset(self):
         commands = []
