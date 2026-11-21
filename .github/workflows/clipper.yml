@@ -2,8 +2,8 @@ name: GTA 6 Automated Clipper
 
 on:
   schedule:
-    # Run once per hour at a predictable minute for reliable scheduling.
-    - cron: "*/15 * * * *"
+    
+    - cron: "7,22,37,52 * * * *"
   # Allows manual one-click test runs from the GitHub Actions tab
   workflow_dispatch:
 
