@@ -6,7 +6,7 @@ This document summarizes everything set up so far so you can continue debugging 
 
 Build a **$0/month, unattended, cloud-hosted automation** that monitors whitelisted YouTube GTA 6 streamers, captures live highlight clips, burns word-level captions + 9:16 vertical framing, and cross-posts to **YouTube Shorts** and **Instagram Reels**.
 
-- **Compute & Scheduler:** Public GitHub repository running **GitHub Actions** (`ubuntu-latest`) every 15 minutes (`*/15 * * * *`) plus manual `workflow_dispatch`. One search per run uses 96 of the default 100 daily YouTube search calls; avoid frequent manual runs to stay within quota.
+- **Compute & Scheduler:** Public GitHub repository running **GitHub Actions** (`ubuntu-latest`) hourly at minute 30 (`30 * * * *`) plus manual `workflow_dispatch`. One YouTube search per run; 24 scheduled searches per day keeps this comfortably below the default daily quota. Avoid frequent manual runs.
 - **Stream Discovery:** YouTube Data API v3 checks only Unq Gamer (`@UnqGamer`) for a live GTA 6 stream. If he is not live, it scans the uploads of Unq Gamer, Techno Gamerz, and IShowSpeed for unprocessed GTA 6 recordings, then tries the most recently published eligible video first.
 - **Capture & Highlight Slicing:** `yt-dlp` resolves a stream URL and `ffmpeg` captures a 180s sample. For recorded videos, a stable video-specific offset chooses a source segment; the pipeline scans audio RMS levels via `astats` and slices a 45s clip around the loudest peak.
 - **Vertical Rendering & Captions:** `ffmpeg` reframes 16:9 to 9:16 (`1080x1920`) with a blurred background, adds a 3.5s top hook banner, and burns 3-word uppercase `.ass` captions generated via **Groq's Whisper API** (`whisper-large-v3-turbo` with `timestamp_granularities[]=word`).
@@ -50,7 +50,7 @@ The cookie secret must contain the complete, current Netscape cookie file, inclu
 
 ## 6. Next Steps to Continue
 
-1. The scheduled workflow checks only Unq Gamer live every 15 minutes. If he is offline, recorded-video fallback checks all three configured channels. Trigger `workflow_dispatch` to test sooner, but remember that YouTube's default search quota allows 100 calls/day and the schedule uses 96.
+1. The scheduled workflow checks only Unq Gamer live once per hour. If he is offline, recorded-video fallback checks all three configured channels. Trigger `workflow_dispatch` to test sooner, but remember that YouTube's default search quota allows 100 calls/day.
 2. If YouTube still reports a challenge-solving error, verify the Actions log shows Node.js 22 and the yt-dlp default extras installed. If it reports a bot check instead, verify the `YOUTUBE_COOKIES` secret or configure a runner with network access YouTube permits.
 3. Set `IG_USER_ID` if Instagram publishing is required, then verify Groq transcription, 9:16 rendering, and each upload destination.
 4. Add transformative commentary/effects to comply with YouTube's Shorts Original Content & Reused Content policies.
