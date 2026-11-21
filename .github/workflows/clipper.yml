@@ -2,8 +2,8 @@ name: GTA 6 Automated Clipper
 
 on:
   schedule:
-    # Runs automatically every 30 minutes (UTC)
-    - cron: "*/30 * * * *"
+    # Three channel searches per run stay below YouTube's default daily search quota.
+    - cron: "0 * * * *"
   # Allows manual one-click test runs from the GitHub Actions tab
   workflow_dispatch:
 
@@ -15,6 +15,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Restore processed-video history
+        uses: actions/cache/restore@v4
+        with:
+          path: clipper_work/processed_videos.json
+          key: gta6-clipper-processed-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: gta6-clipper-processed-v1-
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -46,3 +53,10 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
         run: python gta6_clipper.py --auto
+
+      - name: Save processed-video history
+        if: always() && hashFiles('clipper_work/processed_videos.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: clipper_work/processed_videos.json
+          key: gta6-clipper-processed-v1-${{ github.run_id }}-${{ github.run_attempt }}
