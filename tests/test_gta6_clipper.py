@@ -74,7 +74,7 @@ class RunAutoTests(unittest.TestCase):
         self.find_recorded_videos.return_value = [recorded_video]
 
         with (
-            patch.object(clipper, "find_live_streams", return_value=[]),
+            patch.object(clipper, "find_live_streams", return_value=[]) as find_live_streams,
             patch.object(clipper, "record_video_sample", return_value=Path("sample.mp4")) as record,
             patch.object(clipper, "detect_loudest_window", return_value=0.0),
             patch.object(clipper, "extract_clip", return_value=Path("raw.mp4")),
@@ -84,6 +84,10 @@ class RunAutoTests(unittest.TestCase):
         ):
             clipper.run_auto()
 
+        find_live_streams.assert_called_once_with(clipper.WHITELIST_CHANNELS)
+        self.find_recorded_videos.assert_called_once_with(
+            clipper.RECORDED_CHANNELS, set()
+        )
         record.assert_called_once_with(
             recorded_video["url"], duration_sec=180, start_sec=420
         )

@@ -2,8 +2,8 @@ name: GTA 6 Automated Clipper
 
 on:
   schedule:
-    # Three channel searches per run stay below YouTube's default daily search quota.
-    - cron: "0 * * * *"
+    # One search every 15 minutes uses 96 of the default 100 daily search calls.
+    - cron: "*/15 * * * *"
   # Allows manual one-click test runs from the GitHub Actions tab
   workflow_dispatch:
 

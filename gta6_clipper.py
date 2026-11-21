@@ -31,9 +31,11 @@ CLIPS_DIR = WORK_DIR / "clips"
 READY_DIR = WORK_DIR / "ready"
 PROCESSED_VIDEOS_FILE = WORK_DIR / "processed_videos.json"
 
-# Only monitor streamers who explicitly allow clipping & re-uploads with credit.
+# Check Unq Gamer for live streams; use all approved channels for recorded fallback.
 WHITELIST_CHANNELS = [
     {"name": "Unq Gamer", "channel_id": "UCabjixiIIRDY6-dmaQVbPlA", "handle": "@UnqGamer"},
+]
+RECORDED_CHANNELS = WHITELIST_CHANNELS + [
     {"name": "Techno Gamerz", "channel_id": "UCX8pnu3DYUnx8qy8V_c6oHg", "handle": "@TechnoGamerzOfficial"},
     {"name": "IShowSpeed", "channel_id": "UCWsDFcIhY2DBi3GB5uykGXA", "handle": "@IShowSpeed"},
 ]
@@ -602,7 +604,7 @@ def run_auto() -> None:
     sample, stream, resolution_errors = _capture_first_available(live_candidates)
     recorded_candidates = []
     if sample is None:
-        recorded_candidates = find_recorded_videos(WHITELIST_CHANNELS, processed_ids)
+        recorded_candidates = find_recorded_videos(RECORDED_CHANNELS, processed_ids)
         if recorded_candidates:
             print(f"[Stage 1] Found {len(recorded_candidates)} unprocessed GTA 6 recordings.")
             sample, stream, recorded_errors = _capture_first_available(recorded_candidates)
