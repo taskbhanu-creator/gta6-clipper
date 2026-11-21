@@ -279,6 +279,8 @@ def record_video_sample(
     yt_cmd = [
         "yt-dlp",
         "--no-playlist",
+        "--js-runtimes",
+        "node",
         "-f",
         "best[height<=1080][ext=mp4]/best[height<=1080]/best",
         "-g",

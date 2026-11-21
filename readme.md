@@ -17,7 +17,7 @@ Build a **$0/month, unattended, cloud-hosted automation** that monitors whitelis
 ## 2. Repository Files
 
 - `gta6_clipper.py` — Main Python script implementing all 4 stages (`--auto` flag for GitHub Actions).
-- `.github/workflows/clipper.yml` — GitHub Actions workflow installing `ffmpeg` + Python deps, running regression tests, restoring/saving processed-video history, and running `python gta6_clipper.py --auto`.
+- `.github/workflows/clipper.yml` — GitHub Actions workflow installing Node.js 22, `ffmpeg`, and Python deps (including yt-dlp's EJS solver scripts), running regression tests, restoring/saving processed-video history, and running `python gta6_clipper.py --auto`.
 - `tests/test_gta6_clipper.py` — Focused regression tests for video selection and capture behavior.
 
 ## 3. Configured Whitelist Channels (`WHITELIST_CHANNELS`)
@@ -45,11 +45,12 @@ The cookie secret must contain the complete, current Netscape cookie file, inclu
 1. **Resolved — `yt-dlp` stdout pipe failure:** Initial run piped `bestvideo+bestaudio` to `stdout`, causing `live_sample.mp4` not to be created (`ffmpeg` exit 254). Fixed by switching to `yt-dlp -g` with a combined format (`best[height<=1080][ext=mp4]/best[height<=1080]/best`) and passing the resolved URL to `ffmpeg`.
 2. **Recorded-video fallback:** The latest manual run found no live streams and exited without producing a clip. The pipeline now checks the channels' uploads playlists for unprocessed GTA 6 recordings, samples a stable segment, and tracks successful source video IDs in a GitHub Actions cache to avoid repeat uploads. It processes one source per run.
 3. **YouTube bot check / runner access:** A previous run failed resolving a live video with `Sign in to confirm you're not a bot`. The script uses yt-dlp's default player clients, reports whether the cookie secret is configured (never its value), and tries other candidates before failing. If YouTube rejects recorded videos too, verify the cookie secret or use a runner with network access YouTube permits.
-4. **Instagram configuration:** The supplied run log showed `IG_USER_ID` was empty, so Instagram publishing is skipped. Set this Actions secret if Reels publishing is required; YouTube publishing can still run independently.
+4. **YouTube JavaScript challenge:** A later run reported `n challenge solving failed` and only image formats. The workflow now installs Node.js 22 and `yt-dlp[default]` (which includes the matching EJS solver package), and yt-dlp explicitly uses Node for challenge solving.
+5. **Instagram configuration:** The supplied run log showed `IG_USER_ID` was empty, so Instagram publishing is skipped. Set this Actions secret if Reels publishing is required; YouTube publishing can still run independently.
 
 ## 6. Next Steps to Continue
 
 1. Trigger `workflow_dispatch` and inspect which live or recorded video was selected. Successful source IDs are cached so they are not published repeatedly.
-2. If YouTube rejects all videos, verify the `YOUTUBE_COOKIES` secret or configure a runner with network access YouTube permits.
+2. If YouTube still reports a challenge-solving error, verify the Actions log shows Node.js 22 and the yt-dlp default extras installed. If it reports a bot check instead, verify the `YOUTUBE_COOKIES` secret or configure a runner with network access YouTube permits.
 3. Set `IG_USER_ID` if Instagram publishing is required, then verify Groq transcription, 9:16 rendering, and each upload destination.
 4. Add transformative commentary/effects to comply with YouTube's Shorts Original Content & Reused Content policies.

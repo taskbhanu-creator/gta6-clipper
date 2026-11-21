@@ -145,6 +145,7 @@ class RecordVideoSampleTests(unittest.TestCase):
                 clipper.record_video_sample("https://example.com/video", start_sec=37)
 
         self.assertNotIn("--extractor-args", commands[0])
+        self.assertEqual(commands[0][commands[0].index("--js-runtimes") + 1], "node")
         self.assertEqual(commands[1][commands[1].index("-ss") + 1], "37")
 
 
