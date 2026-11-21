@@ -51,6 +51,10 @@ R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "")
 R2_PUBLIC_BASE_URL = os.getenv("R2_PUBLIC_BASE_URL", "").rstrip("/")
 
 
+class StreamResolutionError(RuntimeError):
+    """Raised when yt-dlp cannot resolve a live stream URL."""
+
+
 def ensure_dirs() -> None:
     for d in (CHUNKS_DIR, CLIPS_DIR, READY_DIR):
         d.mkdir(parents=True, exist_ok=True)
@@ -116,20 +120,20 @@ def record_live_sample(stream_url: str, duration_sec: int = 180) -> Path:
         out_path.unlink()
 
     print(f"[Stage 2] Resolving stream URL for {stream_url} ...")
+    cookies_args = _cookies_args()
+    print(f"[Stage 2] YouTube cookies: {'configured' if cookies_args else 'not configured'}.")
     yt_cmd = [
         "yt-dlp",
         "--no-playlist",
-        "--extractor-args",
-        "youtube:player_client=ios,android,web",
         "-f",
         "best[height<=1080][ext=mp4]/best[height<=1080]/best",
         "-g",
-        *_cookies_args(),
+        *cookies_args,
         stream_url,
     ]
     url_res = subprocess.run(yt_cmd, capture_output=True, text=True, check=False)
     if url_res.returncode != 0 or not url_res.stdout.strip():
-        raise RuntimeError(
+        raise StreamResolutionError(
             f"yt-dlp failed to resolve stream URL (exit {url_res.returncode}):\n{url_res.stderr}"
         )
 
@@ -409,8 +413,28 @@ def run_auto() -> None:
         print("No whitelisted GTA 6 streams are live right now. Exiting cleanly.")
         return
 
-    stream = streams[0]
-    sample = record_live_sample(stream["url"], duration_sec=180)
+    stream = None
+    sample = None
+    resolution_errors = []
+    for candidate in streams:
+        try:
+            sample = record_live_sample(candidate["url"], duration_sec=180)
+            stream = candidate
+            break
+        except StreamResolutionError as exc:
+            resolution_errors.append(f"{candidate['video_id']}: {exc}")
+            print(f"[Stage 2] Could not resolve {candidate['video_id']}; trying the next live stream.")
+
+    if sample is None or stream is None:
+        detail = "\n".join(resolution_errors)
+        if any("not a bot" in error.lower() for error in resolution_errors):
+            detail += (
+                "\nYouTube rejected the runner. Check that YOUTUBE_COOKIES is a fresh, "
+                "valid Netscape-format cookies.txt value; GitHub-hosted runner IPs may "
+                "still be blocked, in which case use a runner with YouTube access."
+            )
+        raise RuntimeError(f"Could not resolve any of the {len(streams)} live streams:\n{detail}")
+
     peak_start = detect_loudest_window(sample)
     raw = extract_clip(sample, peak_start, duration=45)
     final_mp4 = render_vertical_short(raw, hook_text=f"{stream['streamer'].upper()} GTA 6")
